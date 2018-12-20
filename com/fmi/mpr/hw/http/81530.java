@@ -62,10 +62,10 @@ public class HTTPServer {
 		
 	}
 	
-	//To Be Done
+	//TODO
 	private void write(PrintStream ps, String response) {
 		
-		if (ps != null) {
+		/*if (ps != null) {
 			ps.println("HTTP/1.0 200 OK");
 			ps.println();
 
@@ -81,7 +81,7 @@ public class HTTPServer {
 					   "			</form> " +
 					   "</body>\n" + 
 					   "</html>");
-		}
+		}*/
 	}
 	
 
@@ -130,15 +130,16 @@ public class HTTPServer {
 	private String get(PrintStream ps, String typeOfExtension) throws IOException {
 	
 		ps.println("HTTP/1.1 200 OK");
-		ps.println();
 		
 		if (typeOfExtension.equals("mp4") || typeOfExtension.equals("avi")) {
 	
 			try {
-				
+				ps.println("Content-Type: video/mp4");
+				ps.println();
 				sendVideo(ps);
 			} catch (IOException e) {
 
+				ps.println();
 				ps.println("<!DOCTYPE html>\n" + 
 						   "<html>\n" + 
 						   "<head>\n" + 
@@ -157,9 +158,11 @@ public class HTTPServer {
 		else if(typeOfExtension.equals("png") || typeOfExtension.equals("jpg") || typeOfExtension.equals("bmp")) {
 			
 			try {
+				ps.println();
 				sendPic(ps);
 			} catch (IOException e) {
 
+				ps.println();
 				ps.println("<!DOCTYPE html>\n" + 
 						   "<html>\n" + 
 						   "<head>\n" + 
@@ -179,9 +182,11 @@ public class HTTPServer {
 
 			try {
 				
+				ps.println();
 				sendTxt(ps);
 			} catch (IOException e) {
 
+				ps.println();
 				ps.println("<!DOCTYPE html>\n" + 
 						   "<html>\n" + 
 						   "<head>\n" + 
@@ -199,6 +204,7 @@ public class HTTPServer {
 		return null;
 	}
 
+	//TODO
 	private String post(PrintStream ps,  String typeOfExtension) throws IOException {
 
 		return null;
@@ -207,7 +213,10 @@ public class HTTPServer {
 
 	private void sendVideo(PrintStream ps) throws IOException {
 		
-		FileInputStream fis = new FileInputStream(new File("C:\\Users\\valio\\mpr\\network-programming-homework-2018-2019\\com\\fmi\\mpr\\hw\\http\\" + fileName));
+		File f1 = new File(fileName);
+		String path = f1.getAbsolutePath();
+		  
+		FileInputStream fis = new FileInputStream(path);
 		
 		int bytesRead = 0;
 		byte[] buffer = new byte[8192];
@@ -223,7 +232,11 @@ public class HTTPServer {
 
 	private void sendPic(PrintStream ps) throws IOException {
 		
-		FileInputStream fis = new FileInputStream(new File("C:\\Users\\valio\\mpr\\network-programming-homework-2018-2019\\com\\fmi\\mpr\\hw\\http\\" + fileName));
+		File f1 = new File(fileName);
+		String path = f1.getAbsolutePath();
+		  
+		FileInputStream fis = new FileInputStream(path);
+
 		
 		int bytesRead = 0;
 		byte[] buffer = new byte[4096];
@@ -239,7 +252,11 @@ public class HTTPServer {
 	
 	private void sendTxt(PrintStream ps) throws IOException {
 		
-		FileInputStream fis = new FileInputStream(new File("C:\\Users\\valio\\mpr\\network-programming-homework-2018-2019\\com\\fmi\\mpr\\hw\\http\\" + fileName));
+		File f1 = new File(fileName);
+		String path = f1.getAbsolutePath();
+		  
+		FileInputStream fis = new FileInputStream(path);
+
 		
 		int bytesRead = 0;
 		byte[] buffer = new byte[8192];
@@ -253,7 +270,7 @@ public class HTTPServer {
 		fis.close();
 	}
 	
-	//To Be Done
+	//TODO
 	private String parseBody(String body) {
 		
 		if (body != null && !body.trim().isEmpty()) {
@@ -264,7 +281,6 @@ public class HTTPServer {
 
 	
 	public static void main(String[] args) throws IOException {
-		//System.out.println("Test");
 		HTTPServer server = new HTTPServer();
 		server.start();
 	}
