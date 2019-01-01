@@ -12,7 +12,7 @@ public class HTTPServer {
 	private String fileName;
 	
 	public HTTPServer() throws IOException {
-		this.ss = new ServerSocket(8888);
+		this.ss = new ServerSocket(8886);
 	}
 	
 	public void start() {
@@ -56,19 +56,18 @@ public class HTTPServer {
 		try (BufferedInputStream br = new BufferedInputStream(client.getInputStream());
 			 PrintStream ps = new PrintStream(client.getOutputStream(), true)) {
 			
-			String response = read(ps, br);
+			String response = read(ps, br, client);
 			write(ps, response);		
 		}
 		
 	}
 	
-	//TODO
 	private void write(PrintStream ps, String response) {
 		
-		/*if (ps != null) {
-			ps.println("HTTP/1.0 200 OK");
+		if (ps != null) {
+			
+			ps.println("HTTP/1.1 200 OK");
 			ps.println();
-
 			ps.println("<!DOCTYPE html>\n" + 
 					   "<html>\n" + 
 					   "<head>\n" + 
@@ -81,11 +80,11 @@ public class HTTPServer {
 					   "			</form> " +
 					   "</body>\n" + 
 					   "</html>");
-		}*/
+		}
 	}
 	
 
-	private String read(PrintStream ps, BufferedInputStream bis) throws IOException {
+	private String read(PrintStream ps, BufferedInputStream bis, Socket client) throws IOException {
 		
 		if (bis != null) {
 			StringBuilder request = new StringBuilder();
@@ -101,16 +100,17 @@ public class HTTPServer {
 				}
 			}
 			
-			return parseRequest(ps, request.toString());
+			return parseRequest(ps, request.toString(), client);
 		}
 		return "Error";
 	}
 	
-	private String parseRequest(PrintStream ps, String request) throws IOException {
+	private String parseRequest(PrintStream ps, String request, Socket client) throws IOException {
 		
+		String[] lines = request.split("\n");
 		System.out.println(request);
 
-		String firstHeader =  request.split("\n")[0];
+		String firstHeader =  lines[0];
 		String type = firstHeader.split(" ")[0];
 		String uri= firstHeader.split(" ")[1];
 		fileName = uri.substring(1);
@@ -121,7 +121,7 @@ public class HTTPServer {
 			return get(ps, typeOfExtension);
 		}
 		else if(type.equals("POST")){
-			return post(ps, typeOfExtension);
+			return post(ps, lines, client);
 		}
 		
 		return null;
@@ -146,10 +146,7 @@ public class HTTPServer {
 						   "	<title></title>\n" + 
 						   "</head>\n" + 
 						   "<body>\n" + 
-						   "<form action=\"/action_page.php\">\n" + 
-						   "			  <input type=\"file\" name=\"pic\" accept=\"image/*\">\n" + 
-						   "			  <input type=\"submit\">\n" + 
-						   "			</form> " +
+						   "			  Error! This file doesn't exist \n" + 
 						   "</body>\n" + 
 						   "</html>");
 			}
@@ -169,10 +166,7 @@ public class HTTPServer {
 						   "	<title></title>\n" + 
 						   "</head>\n" + 
 						   "<body>\n" + 
-						   "<form action=\"/action_page.php\">\n" + 
-						   "			  <input type=\"file\" name=\"pic\" accept=\"image/*\">\n" + 
-						   "			  <input type=\"submit\">\n" + 
-						   "			</form> " +
+						   "			  Error! This file doesn't exist \n" + 
 						   "</body>\n" + 
 						   "</html>");
 			}
@@ -193,10 +187,7 @@ public class HTTPServer {
 						   "	<title></title>\n" + 
 						   "</head>\n" + 
 						   "<body>\n" + 
-						   "<form action=\"/action_page.php\">\n" + 
-						   "			  <input type=\"file\" name=\"pic\" accept=\"image/*\">\n" + 
-						   "			  <input type=\"submit\">\n" + 
-						   "			</form> " +
+						   "			  Error! This file doesn't exist \n" + 
 						   "</body>\n" + 
 						   "</html>");
 			}
@@ -204,13 +195,39 @@ public class HTTPServer {
 		return null;
 	}
 
-	//TODO
-	private String post(PrintStream ps,  String typeOfExtension) throws IOException {
+	private String post(PrintStream ps,  String[] lines, Socket client) throws IOException {
 
+		String header = lines[0];
+		String url = header.split(" ")[1];
+		
+		if(url.length() != 1) {
+			
+			url = url.substring(1);
+		}
+		
+		if(url.equals("upload.php")) {
+			StringBuilder body = new StringBuilder();
+			
+			boolean readBody = false;
+			for (String line : lines) {
+				if (readBody) { 
+					
+					body.append(line);
+				}
+				
+				if (line.trim().isEmpty()) {
+					
+					readBody = true;
+				}
+					
+			}
+			
+			return parseBody(client, body.toString());
+		}
+		
 		return null;
 	}
 	
-
 	private void sendVideo(PrintStream ps) throws IOException {
 		
 		File f1 = new File(fileName);
@@ -270,17 +287,66 @@ public class HTTPServer {
 		fis.close();
 	}
 	
-	//TODO
-	private String parseBody(String body) {
+	private String parseBody(Socket client, String body) throws IOException {
 		
 		if (body != null && !body.trim().isEmpty()) {
 			
+			String[] operands = body.split(";");
+			fileName = operands[2].split("=")[1].split("\"")[1];
+			
+			String type = fileName.split("\\.")[1];
+			BufferedInputStream bis = new BufferedInputStream(client.getInputStream());
+			String data = null;
+			PrintStream ps = new PrintStream(client.getOutputStream(), true);
+			
+			if(type.equals("jpg") || type.equals("jpeg") || type.equals("bmp") || type.equals("mp4") || type.equals("avi")) {
+				
+				data = sendMedia(bis, ps);
+			}
+			
+			if(type.equals("txt")) {
+				
+				data = sendTextFiles(bis, ps);
+			}
+			
+			File file = new File(fileName);
+			FileOutputStream is = new FileOutputStream(file.getAbsolutePath());
+			is.write(data.getBytes());
+	        is.close();
+	        System.out.println("File sent!");
 		}
 		return null;
 	}
 
+	private String sendTextFiles(BufferedInputStream bis, PrintStream ps) throws IOException {
+		int bytesRead = 0;
+		byte[] buffer = new byte[8192];
+	
+		while((bytesRead = bis.read(buffer, 0, 8192)) > 0) {
+		
+			ps.write(buffer, 0, bytesRead);
+		}
+		
+		return ps.toString();
+		
+	}
+
+	private String sendMedia(BufferedInputStream bis, PrintStream ps) throws IOException {
+		int bytesRead = 0;
+		byte[] buffer = new byte[8192];
+		
+		while ((bytesRead = bis.read(buffer, 0, 8192)) > 0) {
+			
+			ps.write(buffer, 0, bytesRead);
+		}
+		
+		return ps.toString();
+	}
+
+
 	
 	public static void main(String[] args) throws IOException {
+		
 		HTTPServer server = new HTTPServer();
 		server.start();
 	}
